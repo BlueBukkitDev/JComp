@@ -1,0 +1,46 @@
+//Everything is a field. Every function returns a value. 
+...Some comments deserve to cover
+multiple lines, like this. 
+Others only need one line. ...
+
+pub set number = 2.5;
+priv free someStr = "Hello World"; 
+
+priv set rect;
+
+pub fn initRect() {
+	rect = Shape([Point(0, 0), Point(0, 1), Point(1, 1),  Point(1, 0)], false);
+}
+
+pub Shape {
+	Shape{
+		vertices => [Point],//aray of points
+		filled => binary//true or false
+	}
+	
+	pub fn addPoint(Point pt) {
+		vertices.expand(1);
+		vertices.append(pt);//append and prepend are built-in functions for the Array type.
+	}
+}
+
+pub Point {
+	coord => (num, num)//tuple of numbers
+}
+
+pub fn saySmthHalfTheTime(string str, num n) {
+	if n < 2 {
+		nok("Unexpected number encountered!", 1)//nok prints stacktrace if second param = 1/true; error message is first param. 
+	}
+	for * : n {
+		if !(n % 2) {
+			out(System, ...Inserting an in-line comment here. != != // +=... str);
+		}
+	}
+	if 4 != 2 {
+		out(System, "Yeah we all knew that one");
+	}
+	ok()//If you pass nothing, ok() returns 1(true). If you pass a var, the function returns that var's value. Pass a value... well, it returns the value.
+}
+...
+pub, priv, set, free, fn, true, false, for, if, ok, nok, string, num, binary, *, +, -, =, /, %, <, >, ?, :, =>, !, while...

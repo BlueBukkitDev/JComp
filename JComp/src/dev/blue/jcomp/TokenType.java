@@ -1,0 +1,5 @@
+package dev.blue.jcomp;
+
+public enum TokenType {
+	OPEN, CLOSE, OPERATOR, KEYWORD, DEFINED, TYPE, SYMBOL, COMMENT//FUNC, STRUCT, FIELD, TYPE, NUM, STRING, BINARY, 
+}
