@@ -1,10 +1,11 @@
 //Everything is a field. Every function returns a value. 
-...Some comments deserve to cover
+...Some comments deserve to cover 
 multiple lines, like this. 
 Others only need one line. ...
 
-pub set number = 2.5;
-priv free someStr = "Hello World"; 
+pub set number: 2.5;
+
+priv free someStr: "Hello World"; 
 
 priv set rect;
 
@@ -13,10 +14,8 @@ pub fn initRect() {
 }
 
 pub Shape {
-	Shape{
-		vertices => [Point],//aray of points
-		filled => binary//true or false
-	}
+	vertices => [Point],//aray of points
+	filled => binary//true or false
 	
 	pub fn addPoint(Point pt) {
 		vertices.expand(1);
@@ -34,7 +33,7 @@ pub fn saySmthHalfTheTime(string str, num n) {
 	}
 	for * : n {
 		if !(n % 2) {
-			out(System, ...Inserting an in-line comment here. != != // +=... str);
+			out(System, str);
 		}
 	}
 	if 4 != 2 {

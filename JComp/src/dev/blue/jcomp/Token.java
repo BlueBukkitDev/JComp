@@ -5,29 +5,19 @@ public class Token {
 	private String raw;
 	private TokenType type;
 	
-	public Token(String raw) throws InvalidTokenTypeException {
-		if(raw.startsWith("//")||raw.startsWith("...")) {
-			type = TokenType.COMMENT;
-			this.raw = raw;
-			return;
-		}
-		switch(raw) {
-		case "+":type = TokenType.OPERATOR;break;
-		case "-":type = TokenType.OPERATOR;break;
-		case "*":type = TokenType.OPERATOR;break;
-		case "/":type = TokenType.OPERATOR;break;
-		case "%":type = TokenType.OPERATOR;break;
-		case "=":type = TokenType.OPERATOR;break;
-		case "=>":type = TokenType.OPERATOR;break;
-		case "==":type = TokenType.OPERATOR;break;
-		case "+=":type = TokenType.OPERATOR;break;
-		case "-=":type = TokenType.OPERATOR;break;
-		case "*=":type = TokenType.OPERATOR;break;
-		case "/=":type = TokenType.OPERATOR;break;
-		case "%=":type = TokenType.OPERATOR;break;
-		case "!=":type = TokenType.OPERATOR;break;
-		default: throw new InvalidTokenTypeException();
-		}
+	/**
+	 * Boolean variable is whether this token will be of an unknown 
+	 * */
+	public Token(String raw, TokenType type) throws InvalidTokenTypeException {
+		this.type = type;
 		this.raw = raw;
+	}
+	
+	public String getRaw() {
+		return raw;
+	}
+	
+	public TokenType getType() {
+		return type;
 	}
 }
