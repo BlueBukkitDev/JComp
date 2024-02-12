@@ -1,5 +1,7 @@
 package dev.blue.jcomp;
 
+import dev.blue.jcomp.exceptions.InvalidTokenTypeException;
+
 public class Token {
 	
 	private String raw;

@@ -8,6 +8,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import dev.blue.jcomp.exceptions.InvalidTokenTypeException;
+import dev.blue.jcomp.exceptions.UnexpectedLexerStateException;
+import dev.blue.jcomp.lexing.Lexer;
+
 public class Main {
 	private Lexer lexer;
 
@@ -15,10 +19,10 @@ public class Main {
 	public static void main(String[] args) {
 		Lexer lexer = new Lexer();
 		int index = 1;
-		for(String each:readLines(new File("Syntax.smth"))) {
+		for(String each:readLines(new File("min.smth"))) {//set up as min to run a minimally executable example. 
 			try {
 				lexer.lex(each, index);
-			} catch (InvalidTokenTypeException e) {
+			} catch (InvalidTokenTypeException | UnexpectedLexerStateException e) {
 				e.printStackTrace();
 			}
 			index++;
