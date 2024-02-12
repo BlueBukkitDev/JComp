@@ -13,7 +13,6 @@ import dev.blue.jcomp.exceptions.UnexpectedLexerStateException;
 import dev.blue.jcomp.lexing.Lexer;
 
 public class Main {
-	private Lexer lexer;
 
 	//args... "java -jar jcomp.jar file.smth file2.smth etc.smth" would compile all them together. Instead, could read a local file called jcomp.jcml to find everything to be compiled.
 	public static void main(String[] args) {

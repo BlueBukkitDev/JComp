@@ -38,6 +38,10 @@ public enum TokenType {
 	}
 	
 	public static boolean isVisibilityToken(String s) {
-		return (s.equals("there") || s.equals("here"));
+		return (s.equals(Token.VIS_EXT) || s.equals(Token.VIS_IN));
+	}
+	
+	public static boolean isVariabilityToken(String s) {
+		return (s.equals(Token.VAR_CONST) || s.equals(Token.VAR_MUT));
 	}
 }

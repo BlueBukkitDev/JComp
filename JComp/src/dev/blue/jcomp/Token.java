@@ -4,6 +4,11 @@ import dev.blue.jcomp.exceptions.InvalidTokenTypeException;
 
 public class Token {
 	
+	public static final String VIS_EXT = "there";
+	public static final String VIS_IN = "there";
+	public static final String VAR_MUT = "free";
+	public static final String VAR_CONST = "set";
+	
 	private String raw;
 	private TokenType type;
 	

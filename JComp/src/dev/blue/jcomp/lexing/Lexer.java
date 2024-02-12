@@ -36,9 +36,7 @@ public class Lexer {
 		String keyword = "";
 		while (index < line.length()) {
 			char current = line.charAt(index);
-	        
-			//COMMENTS
-			////////////////////////////////////////////////////////////////
+			
 			int result = canLexComments(line, terminatedLine, current);
 			if(result == LexerResult.COMMENT_LEX_LINE) {
 				return;
@@ -83,9 +81,6 @@ public class Lexer {
 				index++;
 				continue;
 			}
-			
-			//KEYWORDS
-			////////////////////////////////////////////////////////////////
 			
 			if(canLexKeywords(line, keyword)) {
 				continue;
@@ -181,7 +176,7 @@ public class Lexer {
 					//throw lexer error; invalid privacy placement
 					return false;
 				}
-			}else if(keyword.equals("set") || keyword.equals("free")) {
+			}else if(TokenType.isVariabilityToken(keyword)) {
 				if(state.visibilityIsDefined()) {
 					tokens.add(new Token(keyword, TokenType.PRIVACY));//privacy and access are too similar in meaning. 
 					state.enterVariabilityState();
@@ -254,6 +249,10 @@ public class Lexer {
 	
 	public void cleanup() {
 		isInBlockComment = false;
+		isInString = false;
+		processed = "";
+		state = new LexerState();
+		lineIndex = 0;
 	}
 	
 	private boolean hasNext(String line, int index) {
@@ -294,20 +293,17 @@ public class Lexer {
 	}
 	
 	private String isKeyword(String line, int index) {
-		if(hasNextOf(line, index, 4) && line.substring(index, index+5).equals("there")) {
-			return "there";
+		if(hasNextOf(line, index, Token.VIS_EXT.length()-1) && line.substring(index, index+Token.VIS_EXT.length()).equals(Token.VIS_EXT)) {
+			return Token.VIS_EXT;
 		}
-		if(hasNextOf(line, index, 3) && line.substring(index, index+4).equals("here")) {
+		if(hasNextOf(line, index, Token.VIS_IN.length()-1) && line.substring(index, index+Token.VIS_IN.length()).equals(Token.VIS_IN)) {
 			return "here";
 		}
-		if(hasNextOf(line, index, 2) && line.substring(index, index+3).equals("set")) {
+		if(hasNextOf(line, index, Token.VAR_CONST.length()-1) && line.substring(index, index+Token.VAR_CONST.length()).equals(Token.VAR_CONST)) {
 			return "set";
 		}
-		if(hasNextOf(line, index, 3) && line.substring(index, index+4).equals("free")) {
+		if(hasNextOf(line, index, Token.VAR_MUT.length()-1) && line.substring(index, index+Token.VAR_MUT.length()).equals(Token.VAR_MUT)) {
 			return "free";
-		}
-		if(hasNextOf(line, index, 1) && line.substring(index, index+2).equals("fn")) {
-			return "fn";
 		}
 		return null;
 	}
