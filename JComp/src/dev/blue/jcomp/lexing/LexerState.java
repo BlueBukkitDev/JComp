@@ -3,7 +3,16 @@ package dev.blue.jcomp.lexing;
 import dev.blue.jcomp.Option;
 import dev.blue.jcomp.exceptions.UnexpectedLexerStateException;
 
-public class LexerState {//It's really hard to set up a clean interaction between the lexer and the lexerstate. I want all comms to be via functions, no variables passed. 
+/**
+ *This class is designed to track and progress the current state of the software being read. As the lexer 
+ *moves through the code, it needs context in order to effectively determine the function of each token. 
+ *This class contains a stack of final ints that can be accessed via the provided functions, whose purpose 
+ *it is to abstract over the states so that there is less chance of mistake when determining the current 
+ *state. This class also provides functions related to getting the next possible state. If the syntax of 
+ *the language were to be significantly changed, or if this were to be adapted for another language, then 
+ *those functions would be the ones needing the most change. 
+ **/
+public class LexerState {
 	private int currentState;
 	
 	/**
@@ -14,8 +23,7 @@ public class LexerState {//It's really hard to set up a clean interaction betwee
 	public LexerState() {
 		currentState = STATE_NONE;
 	}
-	//These states help to give context to the lexer, allowing for one thing to have multiple meanings depending 
-	//on how and where it is used. 
+	
 	private final int STATE_NONE = 0;
 	private final int STATE_VISIBILITY = 1;
 	private final int STATE_VARIABILITY = 2;
@@ -25,9 +33,17 @@ public class LexerState {//It's really hard to set up a clean interaction betwee
 	private final int STATE_FRAME_NAME = 8;
 	private final int STATE_FRAME_PARAMETERS = 9;
 	
-	private final int STATE_VALUE_OPERATOR = 10;
+	private final int STATE_VALUE_OPERATOR = 10;//value operator? I think this is unused
 	
 	private final int STATE_BREAK = 20;
+	
+	/**
+	 * Determines whether the most recently read keyword was a break, and we are now waiting to begin the next  
+	 * line. 
+	 **/
+	public boolean noneIsDefined() {
+		return currentState == STATE_NONE;
+	}
 	
 	/**
 	 * Determines whether the most recently read keyword was one used to determine the visibility of a field, 
@@ -45,14 +61,16 @@ public class LexerState {//It's really hard to set up a clean interaction betwee
 		return currentState == STATE_VARIABILITY;
 	}
 	
-	public boolean noneIsDefined() {
-		return currentState == STATE_NONE;
-	}
-	
+	/**
+	 * Determines whether the most recently read token was a user-defined field name. 
+	 **/
 	public boolean fieldNameIsDefined() {
 		return currentState == STATE_FIELD_NAME;
 	}
 	
+	/**
+	 * Determines whether the most recently read token was the value of a field. This may and may not include operators?
+	 **/
 	public boolean fieldValueIsDefined() {
 		return currentState == STATE_FIELD_VALUE;
 	}

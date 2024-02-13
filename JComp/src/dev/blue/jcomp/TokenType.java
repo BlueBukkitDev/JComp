@@ -38,10 +38,18 @@ public enum TokenType {
 	}
 	
 	public static boolean isVisibilityToken(String s) {
-		return (s.equals(Token.VIS_EXT) || s.equals(Token.VIS_IN));
+		return (s.equals(Token.VISIBLE_EXTERNAL) || s.equals(Token.VISIBLE_INTERNAL));
 	}
 	
 	public static boolean isVariabilityToken(String s) {
-		return (s.equals(Token.VAR_CONST) || s.equals(Token.VAR_MUT));
+		return (s.equals(Token.VAR_CONSTANT) || s.equals(Token.VAR_MUTABLE));
+	}
+	
+	public static boolean isLineCommentToken(String s) {
+		return s.equals(Token.COMMENT_LINE);
+	}
+	
+	public static boolean isBlockCommentToken(String s) {
+		return s.equals(Token.COMMENT_BLOCK);
 	}
 }

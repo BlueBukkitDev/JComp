@@ -122,7 +122,7 @@ public class Lexer {
 					terminatedLine = true;
 					index++;
 					continue;
-				}else throw new InvalidTokenTypeException("Misplaced semicolon `;` at line "+lineIndex+", column "+index);
+				}else throw new InvalidTokenTypeException("Misplaced line break `;` at line "+lineIndex+", column "+index);
 			}
 
 			//System.out.print(current);//enable to see all code printed to console. Disable to see only lexxed code.
@@ -132,65 +132,97 @@ public class Lexer {
 	}
 	//--End of Lex Function--//
 	
+	/**
+	 *Tokenizes the value of a field currently being processed. To do so, it adds the token to the list as TokenType.DATA, then 
+	 *resets the processed string. 
+	 **/
 	private void tokenizeCurrentValue() throws InvalidTokenTypeException {
 		tokens.add(new Token(processed, TokenType.DATA));
 		System.out.print(processed.trim());
 		processed = "";
 	}
 	
+	/**
+	 *Checks whether a field name is being defined or has been defined; if it has been defined (we have encountered a Definer token), 
+	 *then it resets the processed string and enters the fieldNameState.
+	 **/
 	private boolean canLexDefinitions(char current, TokenType type) throws InvalidTokenTypeException, UnexpectedLexerStateException {
-		if(state.variabilityIsDefined()) {
-			if((type = isDefiner(current)) == TokenType.DEFINER) {//we encounter the :
-				processed.trim();
-				if(!fieldNameIsValid(processed)) {
-					throw new InvalidTokenTypeException("Field name declared on line "+lineIndex+", column "+index+" is invalid. Check length and characters. ");
-				}
-				tokens.add(new Token(processed, TokenType.DEFINED));
-				tokens.add(new Token(":", TokenType.DEFINER));
-				if(isDebug) System.out.print(processed+":");
-				index++;
-				processed = "";
-				state.enterFieldNameState();
-				return true;
-			}else {
-				processed += current;
-				index++;
-				return true;
-			}
+		if(!state.variabilityIsDefined()) {
+			return false;
 		}
-		return false;
-	}
-	
-	private boolean fieldNameIsValid(String name) {
-		return name.length() > 0;
-	}
-	
-	private boolean canLexKeywords(String line, String keyword) throws InvalidTokenTypeException, UnexpectedLexerStateException {
-		if((keyword = isKeyword(line, index)) != null) {
-			if(isDebug) System.out.print(keyword+" ");
-			if(TokenType.isVisibilityToken(keyword)) {
-				if(state.noneIsDefined()) {
-					tokens.add(new Token(keyword, TokenType.PRIVACY));//privacy and access are too similar in meaning. 
-					state.enterVisibilityState();
-				}else {
-					//throw lexer error; invalid privacy placement
-					return false;
-				}
-			}else if(TokenType.isVariabilityToken(keyword)) {
-				if(state.visibilityIsDefined()) {
-					tokens.add(new Token(keyword, TokenType.PRIVACY));//privacy and access are too similar in meaning. 
-					state.enterVariabilityState();
-				}else {
-					//throw lexer error; invalid access placement, no privacy
-					return false;
-				}
-			}
-			index += keyword.length();
+		if((type = isDefiner(current+"")) == TokenType.DEFINER) {
+			processed = processed.trim();
+			validateFieldName(processed);
+			tokens.add(new Token(processed, TokenType.DEFINED));
+			tokens.add(new Token(":", TokenType.DEFINER));
+			if(isDebug) System.out.print(processed+":");
+			index++;
+			processed = "";
+			state.enterFieldNameState();
+			return true;
+		}else {
+			processed += current;
+			index++;
 			return true;
 		}
-		return false;
 	}
 	
+	/**
+	 *Validates the supplied field name by trimming whitespace and then ensuring it is at least 1 char long. 
+	 *@param name - the name of the field
+	 *@throws InvalidTokenTypeException if field name is less than 1 char long
+	 **/
+	private void validateFieldName(String name) throws InvalidTokenTypeException {
+		if(name.trim().length() == 0) {
+			throw new InvalidTokenTypeException("Field name declared on line "+lineIndex+", column "+index+" is invalid. Check length and characters. ");
+		}
+	}
+	
+	/**
+	 *
+	 **/
+	private boolean canLexKeywords(String line, String keyword) throws InvalidTokenTypeException, UnexpectedLexerStateException {
+		keyword = keyword.trim();
+		if((keyword = isKeyword(line, index)) == null) {
+			return false;
+		}
+		if(isDebug) System.out.print(keyword);
+		if(TokenType.isVisibilityToken(keyword)) {
+			lexVisibility(keyword);
+		}else if(TokenType.isVariabilityToken(keyword)) {
+			lexVariability(keyword);
+		}
+		index += keyword.length();
+		return true;
+	}
+	
+	/**
+	 *
+	 **/
+	private void lexVisibility(String keyword) throws InvalidTokenTypeException, UnexpectedLexerStateException {
+		if(state.noneIsDefined()) {
+			tokens.add(new Token(keyword, TokenType.PRIVACY));
+			state.enterVisibilityState();
+		}else {
+			//throw lexer error; invalid privacy placement
+		}
+	}
+	
+	/**
+	 *
+	 **/
+	private void lexVariability(String keyword) throws InvalidTokenTypeException, UnexpectedLexerStateException {
+		if(state.visibilityIsDefined()) {
+			tokens.add(new Token(keyword, TokenType.ACCESS));
+			state.enterVariabilityState();
+		}else {
+			//throw lexer error; invalid access placement, no privacy
+		}
+	}
+	
+	/**
+	 *
+	 **/
 	private int canLexComments(String line, boolean terminatedLine, char current) {
 		int commStyle;
 		if((commStyle = isComment(line, index)) > 0) {//We are a comment symbol
@@ -268,13 +300,20 @@ public class Lexer {
 		return line.length() > index+count;
 	}
 	
-	private TokenType isDefiner(char c) {
-		switch(c) {
-		case ':':return TokenType.DEFINER;
+	/**
+	 *Checks whether the given char is a Definer token. If so, returns TokenType.DEFINER. 
+	 *Otherwise, returns TokenType.NONE. 
+	 **/
+	private TokenType isDefiner(String s) {
+		switch(s) {
+		case Token.DEFINER:return TokenType.DEFINER;
 		default:return TokenType.NONE;
 		}
 	}
 	
+	/**
+	 *Checks whether the given char is numeric. This includes [0123456789.-] and excludes all else. 
+	 **/
 	private boolean isNumeric(char c) {
 		switch(c) {
 		case '0':return true;
@@ -288,45 +327,55 @@ public class Lexer {
 		case '8':return true;
 		case '9':return true;
 		case '.':return true;
+		case '-':return true;
 		default:return false;
 		}
 	}
 	
+	/**
+	 *Checks whether the given line has a keyword beginning at the given index. If so, returns the 
+	 *keyword found there. If no keyword is found, returns null. 
+	 **/
 	private String isKeyword(String line, int index) {
-		if(hasNextOf(line, index, Token.VIS_EXT.length()-1) && line.substring(index, index+Token.VIS_EXT.length()).equals(Token.VIS_EXT)) {
-			return Token.VIS_EXT;
+		if(hasNextOf(line, index, Token.VISIBLE_EXTERNAL.length()-1) && line.substring(index, index+Token.VISIBLE_EXTERNAL.length()).equals(Token.VISIBLE_EXTERNAL)) {
+			return Token.VISIBLE_EXTERNAL;
 		}
-		if(hasNextOf(line, index, Token.VIS_IN.length()-1) && line.substring(index, index+Token.VIS_IN.length()).equals(Token.VIS_IN)) {
-			return "here";
+		if(hasNextOf(line, index, Token.VISIBLE_INTERNAL.length()-1) && line.substring(index, index+Token.VISIBLE_INTERNAL.length()).equals(Token.VISIBLE_INTERNAL)) {
+			return Token.VISIBLE_INTERNAL;
 		}
-		if(hasNextOf(line, index, Token.VAR_CONST.length()-1) && line.substring(index, index+Token.VAR_CONST.length()).equals(Token.VAR_CONST)) {
-			return "set";
+		if(hasNextOf(line, index, Token.VAR_CONSTANT.length()-1) && line.substring(index, index+Token.VAR_CONSTANT.length()).equals(Token.VAR_CONSTANT)) {
+			return Token.VAR_CONSTANT;
 		}
-		if(hasNextOf(line, index, Token.VAR_MUT.length()-1) && line.substring(index, index+Token.VAR_MUT.length()).equals(Token.VAR_MUT)) {
-			return "free";
+		if(hasNextOf(line, index, Token.VAR_MUTABLE.length()-1) && line.substring(index, index+Token.VAR_MUTABLE.length()).equals(Token.VAR_MUTABLE)) {
+			return Token.VAR_MUTABLE;
 		}
 		return null;
 	}
 	
+	/**
+	 *Checks whether the checked char is one used to denote the wrapping of a String. 
+	 **/
 	private boolean isString(char c) {
-		return ('"' == c) ? true : false;
+		return '"' == c;
 	}
 	
+	/**
+	 *Checks whether the provided index of the provided string is the beginning of a comment declaration. 
+	 **/
 	private int isComment(String line, int index) {
-		if(hasNext(line, index)) {//single-line comment
-			if(line.charAt(index) == '/' && line.charAt(index+1) == '/') {
-				return 1;
-			}
-			if(hasNextOf(line, index, 2)) {//multi-line comment
-				if(line.substring(index, index+3).equals("...")) {
-					return 2;
-				}
-			}
+		if(hasNextOf(line, index, Token.COMMENT_LINE.length()-1) && TokenType.isLineCommentToken(line.substring(index, index+Token.COMMENT_LINE.length()))) {
+			return 1;
 		}
-		
+		if(hasNextOf(line, index, Token.COMMENT_BLOCK.length()-1) && TokenType.isBlockCommentToken(line.substring(index, index+Token.COMMENT_BLOCK.length()))) {
+			return 2;
+		}
 		return 0;
 	}
 	
+	/**
+	 *Checks whether the passed chars form a valid compound symbol, e.g. operators and comparators. 
+	 *If so, returns the token type that they are. 
+	 **/
 	private TokenType isCompoundSymbol(char here, char next) {
 		switch(here) {
 		case '=':if(next == '>') {return TokenType.OPERATOR;} else if (next == '=') {return TokenType.COMPARATOR;}
