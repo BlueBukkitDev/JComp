@@ -17,6 +17,7 @@ public class Lexer {
 	private LexerState state;
 	private int lineIndex;
 	private int index;
+	private String line;
 	
 	public Lexer() {
 		isInBlockComment = false;
@@ -28,6 +29,7 @@ public class Lexer {
 	}
 	
 	public void lex(String line, int row) throws InvalidTokenTypeException, UnexpectedLexerStateException {
+		this.line = line;
 		lineIndex++;
 		boolean terminatedLine = false;
 		index = 0;
@@ -35,19 +37,15 @@ public class Lexer {
 		TokenType type;
 		String keyword = "";
 		while (index < line.length()) {
-			char current = line.charAt(index);
 			
-			int result = canLexComments(line, terminatedLine, current);
+			int result = canLexComments(terminatedLine);
 			if(result == LexerResult.COMMENT_LEX_LINE) {
 				return;
 			}else if(result == LexerResult.COMMENT_LEX_BLOCK) {
 				continue;
 			}
 			
-			//COMPOUND SYMBOLS
-			////////////////////////////////////////////////////////////////
-			
-			if(hasNext(line, index) && (type = isCompoundSymbol(current, line.charAt(index+1))) != TokenType.NONE) {//If has not next, cannot be compound. 
+			if((type = canLexCompoundSymbol()) != TokenType.NONE) {
 				char[] both = {current, line.charAt(index+1)};
 				tokens.add(new Token(new String(both), type));
 				if(isDebug) System.out.print(new String(both));
@@ -82,19 +80,13 @@ public class Lexer {
 				continue;
 			}
 			
-			if(canLexKeywords(line, keyword)) {
+			if(canLexKeywords(keyword)) {
 				continue;
 			}
 			
-			//DECLARATIONS of fields and functions
-			////////////////////////////////////////////////////////////////
-			
-			if(canLexDefinitions(current, type)) {
+			if(canLexDefinitions(line, type)) {
 				continue;
 			}
-			
-			//VALUES
-			////////////////////////////////////////////////////////////////
 			
 			if(state.fieldNameIsDefined()) {
 				if(isNumeric(current)) {//we are defining a number
@@ -105,9 +97,6 @@ public class Lexer {
 					continue;
 				}
 			}
-			
-			//SEMICOLON :D
-			////////////////////////////////////////////////////////////////
 			
 			if((type = TokenType.isBreak(current)) != TokenType.NONE) {
 				if(state.fieldNameIsDefined()) {
@@ -122,10 +111,9 @@ public class Lexer {
 					terminatedLine = true;
 					index++;
 					continue;
-				}else throw new InvalidTokenTypeException("Misplaced line break `;` at line "+lineIndex+", column "+index);
+				}else throw new InvalidTokenTypeException("Misplaced line break `"+Token.BREAK+"` at line "+lineIndex+", column "+index);
 			}
 
-			//System.out.print(current);//enable to see all code printed to console. Disable to see only lexxed code.
 			index++;
 		}
 		if (!terminatedLine) {System.out.println("");}//shouldn't the ! not be there?
@@ -181,9 +169,9 @@ public class Lexer {
 	/**
 	 *
 	 **/
-	private boolean canLexKeywords(String line, String keyword) throws InvalidTokenTypeException, UnexpectedLexerStateException {
+	private boolean canLexKeywords(String keyword) throws InvalidTokenTypeException, UnexpectedLexerStateException {
 		keyword = keyword.trim();
-		if((keyword = isKeyword(line, index)) == null) {
+		if((keyword = isKeyword()) == null) {
 			return false;
 		}
 		if(isDebug) System.out.print(keyword);
@@ -223,9 +211,9 @@ public class Lexer {
 	/**
 	 *
 	 **/
-	private int canLexComments(String line, boolean terminatedLine, char current) {
+	private int canLexComments(boolean terminatedLine) {
 		int commStyle;
-		if((commStyle = isComment(line, index)) > 0) {//We are a comment symbol
+		if((commStyle = isComment()) > 0) {//We are a comment symbol
 			if(commStyle == 1) {//A line comment
 				if(!isInBlockComment) {//that is not nested inside a block comment
 					if(isDebug) System.out.println(line.substring(index));
@@ -248,7 +236,7 @@ public class Lexer {
 			}
 		}
 		if(isInBlockComment) {//If we are reading a comment already,
-			processed += current;//we add the current char to the comment string,
+			processed += line.charAt(index);//we add the current char to the comment string,
 			index++;//iterate forward,
 			return LexerResult.COMMENT_LEX_BLOCK;//and move to the next char
 		}
@@ -287,7 +275,7 @@ public class Lexer {
 		lineIndex = 0;
 	}
 	
-	private boolean hasNext(String line, int index) {
+	private boolean hasNext(int index) {
 		return line.length() > index+1;
 	}
 	
@@ -336,7 +324,7 @@ public class Lexer {
 	 *Checks whether the given line has a keyword beginning at the given index. If so, returns the 
 	 *keyword found there. If no keyword is found, returns null. 
 	 **/
-	private String isKeyword(String line, int index) {
+	private String isKeyword() {
 		if(hasNextOf(line, index, Token.VISIBLE_EXTERNAL.length()-1) && line.substring(index, index+Token.VISIBLE_EXTERNAL.length()).equals(Token.VISIBLE_EXTERNAL)) {
 			return Token.VISIBLE_EXTERNAL;
 		}
@@ -362,7 +350,7 @@ public class Lexer {
 	/**
 	 *Checks whether the provided index of the provided string is the beginning of a comment declaration. 
 	 **/
-	private int isComment(String line, int index) {
+	private int isComment() {
 		if(hasNextOf(line, index, Token.COMMENT_LINE.length()-1) && TokenType.isLineCommentToken(line.substring(index, index+Token.COMMENT_LINE.length()))) {
 			return 1;
 		}
@@ -374,20 +362,26 @@ public class Lexer {
 	
 	/**
 	 *Checks whether the passed chars form a valid compound symbol, e.g. operators and comparators. 
-	 *If so, returns the token type that they are. 
+	 *If so, creates the token and adds it. 
 	 **/
-	private TokenType isCompoundSymbol(char here, char next) {
-		switch(here) {
-		case '=':if(next == '>') {return TokenType.OPERATOR;} else if (next == '=') {return TokenType.COMPARATOR;}
-		case '!':if(next == '=') return TokenType.COMPARATOR;
-		
-		case '+':if(next == '=') return TokenType.OPERATOR;
-		case '-':if(next == '=') return TokenType.OPERATOR;
-		case '*':if(next == '=') return TokenType.OPERATOR;
-		case '/':if(next == '=') return TokenType.OPERATOR;
-		case '%':if(next == '=') return TokenType.OPERATOR;
-		default: return TokenType.NONE;
+	private boolean canLexCompoundSymbol() {
+		String compound;
+		if((compound = getCompound()) == null) {
+			return false;
 		}
+		switch(compound) {
+		case "=>":;return true;//don't want to do it this way. I want to never input manual text here. 
+		default:return false;
+		}
+	}
+	
+	private String getCompound() {
+		for(int i = 0; i < Token.COMPOUNDS.length; i++) {
+			if(hasNextOf(line, index, Token.COMPOUNDS[i].length()-1) && line.substring(index, index+Token.COMPOUNDS[i].length()).equals(Token.COMPOUNDS[i])) {
+				return Token.COMPOUNDS[i];
+			}
+		}
+		return null;
 	}
 }
 /*there, here, set, free, fn, true, false, for, if, ok, nok, string, num, binary, *, +, -, =, /, %, <, >, ?, :, =>, !, while,*/

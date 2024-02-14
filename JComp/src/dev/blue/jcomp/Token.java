@@ -16,6 +16,8 @@ public class Token {
 	public static final String COMMENT_LINE = "//";
 	public static final String COMMENT_BLOCK = "...";
 	public static final String DEFINER = ":";
+	public static final String BREAK = ";";
+	public static final String[] COMPOUNDS = {"=>", "!=", "==", "+=", "-=", "*=", "/=", "%=", "=/="};//last option is not used, but could be used as a != operator.
 	
 	private String raw;
 	private TokenType type;
