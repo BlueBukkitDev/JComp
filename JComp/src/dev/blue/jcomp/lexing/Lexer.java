@@ -1,6 +1,7 @@
 package dev.blue.jcomp.lexing;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import dev.blue.jcomp.Token;
@@ -45,38 +46,27 @@ public class Lexer {
 				continue;
 			}
 			
-			if((type = canLexCompoundSymbol()) != TokenType.NONE) {
-				char[] both = {current, line.charAt(index+1)};
-				tokens.add(new Token(new String(both), type));
-				if(isDebug) System.out.print(new String(both));
-				index += 2;
+			if(canLexCompoundOperator()) {
 				continue;
 			}
 			
-			//SINGLE OPERATORS
-			////////////////////////////////////////////////////////////////
-			
-			if((type = TokenType.isOperator(current)) != TokenType.NONE) {
-				if(state.fieldNameIsDefined()) {
-					if(processed.length() > 0) {//we are in the middle of defining a value, and are adding an operator.
-						tokenizeCurrentValue();
-					}else {//we have an operator but no left-hand value
-						
-					}
-				}
-				tokens.add(new Token(Character.toString(current), type));
-				if(isDebug) System.out.print(Character.toString(current));
-				index++;
+			if(canLexCompoundComparator()) {
 				continue;
 			}
 			
-			//SCOPE SYMBOLS, DATA SEPARATORS
-			////////////////////////////////////////////////////////////////
+			if(canLexOperator()) {//Gonna need to check for left- and right-hand values. 
+				continue;
+			}
 			
-			if((type = TokenType.isDelimiter(current, state)) != TokenType.NONE) {
-				tokens.add(new Token(Character.toString(current), type));
-				if(isDebug) System.out.print(current);
-				index++;
+			if(canLexComparator()) {
+				continue;
+			}
+			
+			if(canLexSequencer()) {
+				continue;
+			}
+			
+			if(canLexHeir()) {
 				continue;
 			}
 			
@@ -84,16 +74,16 @@ public class Lexer {
 				continue;
 			}
 			
-			if(canLexDefinitions(line, type)) {
+			if(canLexDefinitions(type)) {
 				continue;
 			}
 			
 			if(state.fieldNameIsDefined()) {
-				if(isNumeric(current)) {//we are defining a number
-					processed += current;
+				if(isNumeric(line.charAt(index))) {//we are defining a number
+					processed += line.charAt(index);
 					index++;
 					continue;
-				}else if(canLexStrings(current)) {//we are defining a string
+				}else if(canLexStrings(line.charAt(index))) {//we are defining a string
 					continue;
 				}
 			}
@@ -134,11 +124,11 @@ public class Lexer {
 	 *Checks whether a field name is being defined or has been defined; if it has been defined (we have encountered a Definer token), 
 	 *then it resets the processed string and enters the fieldNameState.
 	 **/
-	private boolean canLexDefinitions(char current, TokenType type) throws InvalidTokenTypeException, UnexpectedLexerStateException {
+	private boolean canLexDefinitions(TokenType type) throws InvalidTokenTypeException, UnexpectedLexerStateException {
 		if(!state.variabilityIsDefined()) {
 			return false;
 		}
-		if((type = isDefiner(current+"")) == TokenType.DEFINER) {
+		if(isDefiner()) {
 			processed = processed.trim();
 			validateFieldName(processed);
 			tokens.add(new Token(processed, TokenType.DEFINED));
@@ -149,7 +139,7 @@ public class Lexer {
 			state.enterFieldNameState();
 			return true;
 		}else {
-			processed += current;
+			processed += line.charAt(index);
 			index++;
 			return true;
 		}
@@ -275,10 +265,6 @@ public class Lexer {
 		lineIndex = 0;
 	}
 	
-	private boolean hasNext(int index) {
-		return line.length() > index+1;
-	}
-	
 	/**
 	 * returns whether the line has `count` characters remaining to be read (exclusive). <br>
 	 * So if you want to know whether your indexed character (p) is followed by 3 more (riv), 
@@ -292,11 +278,11 @@ public class Lexer {
 	 *Checks whether the given char is a Definer token. If so, returns TokenType.DEFINER. 
 	 *Otherwise, returns TokenType.NONE. 
 	 **/
-	private TokenType isDefiner(String s) {
-		switch(s) {
-		case Token.DEFINER:return TokenType.DEFINER;
-		default:return TokenType.NONE;
+	private boolean isDefiner() {
+		if(hasNextOf(line, index, Token.DEFINER.length()) && line.substring(index, index+Token.DEFINER.length()).equals(Token.DEFINER)) {
+			return true;
 		}
+		return false;
 	}
 	
 	/**
@@ -331,11 +317,11 @@ public class Lexer {
 		if(hasNextOf(line, index, Token.VISIBLE_INTERNAL.length()-1) && line.substring(index, index+Token.VISIBLE_INTERNAL.length()).equals(Token.VISIBLE_INTERNAL)) {
 			return Token.VISIBLE_INTERNAL;
 		}
-		if(hasNextOf(line, index, Token.VAR_CONSTANT.length()-1) && line.substring(index, index+Token.VAR_CONSTANT.length()).equals(Token.VAR_CONSTANT)) {
-			return Token.VAR_CONSTANT;
+		if(hasNextOf(line, index, Token.FIELD_CONSTANT.length()-1) && line.substring(index, index+Token.FIELD_CONSTANT.length()).equals(Token.FIELD_CONSTANT)) {
+			return Token.FIELD_CONSTANT;
 		}
-		if(hasNextOf(line, index, Token.VAR_MUTABLE.length()-1) && line.substring(index, index+Token.VAR_MUTABLE.length()).equals(Token.VAR_MUTABLE)) {
-			return Token.VAR_MUTABLE;
+		if(hasNextOf(line, index, Token.FIELD_MUTABLE.length()-1) && line.substring(index, index+Token.FIELD_MUTABLE.length()).equals(Token.FIELD_MUTABLE)) {
+			return Token.FIELD_MUTABLE;
 		}
 		return null;
 	}
@@ -363,22 +349,111 @@ public class Lexer {
 	/**
 	 *Checks whether the passed chars form a valid compound symbol, e.g. operators and comparators. 
 	 *If so, creates the token and adds it. 
+	 * @throws InvalidTokenTypeException 
 	 **/
-	private boolean canLexCompoundSymbol() {
+	private boolean canLexCompoundOperator() throws InvalidTokenTypeException {
 		String compound;
-		if((compound = getCompound()) == null) {
+		if((compound = getCompoundOperator()) == null) {
 			return false;
 		}
-		switch(compound) {
-		case "=>":;return true;//don't want to do it this way. I want to never input manual text here. 
-		default:return false;
+		if(Arrays.asList(Token.COMPOUND_OPS).contains(compound)) {
+			tokens.add(new Token(compound, TokenType.OPERATOR));
+			index += compound.length();
+			return true;
 		}
+		return false;
 	}
 	
-	private String getCompound() {
-		for(int i = 0; i < Token.COMPOUNDS.length; i++) {
-			if(hasNextOf(line, index, Token.COMPOUNDS[i].length()-1) && line.substring(index, index+Token.COMPOUNDS[i].length()).equals(Token.COMPOUNDS[i])) {
-				return Token.COMPOUNDS[i];
+	private boolean canLexCompoundComparator() throws InvalidTokenTypeException {
+		String compound;
+		if((compound = getCompoundComparator()) == null) {
+			return false;
+		}
+		if(Arrays.asList(Token.COMPOUND_COMPS).contains(compound)) {
+			tokens.add(new Token(compound, TokenType.COMPARATOR));
+			index += compound.length();
+			return true;
+		}
+		return false;
+	}
+	
+	private boolean canLexOperator() throws InvalidTokenTypeException {
+		String compound;
+		if((compound = getOperator()) == null) {
+			return false;
+		}
+		if(Arrays.asList(Token.OPERATORS).contains(compound)) {
+			tokens.add(new Token(compound, TokenType.OPERATOR));
+			index += compound.length();
+			return true;
+		}
+		return false;
+	}
+	
+	private boolean canLexComparator() throws InvalidTokenTypeException {
+		String compound;
+		if((compound = getComparator()) == null) {
+			return false;
+		}
+		if(Arrays.asList(Token.COMPARATORS).contains(compound)) {
+			tokens.add(new Token(compound, TokenType.COMPARATOR));
+			index += compound.length();
+			return true;
+		}
+		return false;
+	}
+	
+	private boolean canLexSequencer() throws InvalidTokenTypeException {////////////////NOT ADJUSTED
+		String compound;
+		if(hasNextOf(line, index, Token.SEQUENCER.length()-1) && (compound = line.substring(index, index+Token.SEQUENCER.length())).equals(Token.SEQUENCER)) {
+			tokens.add(new Token(compound, TokenType.SEQUENCER));
+			index += compound.length();
+			return true;
+		}
+		return false;
+	}
+	
+	private boolean canLexHeir() throws InvalidTokenTypeException {////////////////NOT ADJUSTED
+		String compound;
+		if(hasNextOf(line, index, Token.HEIR.length()-1) && (compound = line.substring(index, index+Token.HEIR.length())).equals(Token.HEIR)) {
+			tokens.add(new Token(compound, TokenType.HEIR));
+			index += compound.length();
+			return true;
+		}
+		return false;
+	}
+	
+	private String getOperator() {
+		for(int i = 0; i < Token.OPERATORS.length; i++) {
+			if(hasNextOf(line, index, Token.OPERATORS[i].length()-1) && line.substring(index, index+Token.OPERATORS[i].length()).equals(Token.OPERATORS[i])) {
+				return Token.OPERATORS[i];
+			}
+		}
+		return null;
+	}
+	
+	private String getComparator() {
+		for(int i = 0; i < Token.COMPARATORS.length; i++) {
+			if(hasNextOf(line, index, Token.COMPARATORS[i].length()-1) && line.substring(index, index+Token.COMPARATORS[i].length()).equals(Token.COMPARATORS[i])) {
+				return Token.COMPARATORS[i];
+			}
+		}
+		return null;
+	}
+	
+	private String getCompoundOperator() {
+		for(int i = 0; i < Token.COMPOUND_OPS.length; i++) {
+			if(hasNextOf(line, index, Token.COMPOUND_OPS[i].length()-1) && line.substring(index, index+Token.COMPOUND_OPS[i].length()).equals(Token.COMPOUND_OPS[i])) {
+				return Token.COMPOUND_OPS[i];
+			}
+		}
+		return null;
+	}
+	
+	private String getCompoundComparator() {
+		for(int i = 0; i < Token.COMPOUND_COMPS.length; i++) {
+			if(hasNextOf(line, index, Token.COMPOUND_COMPS[i].length()-1) && line.substring(index, index+Token.COMPOUND_COMPS[i].length()).equals(Token.COMPOUND_COMPS[i])) {
+				return Token.COMPOUND_COMPS[i];
 			}
 		}
 		return null;
