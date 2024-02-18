@@ -10,7 +10,7 @@ import dev.blue.jcomp.exceptions.InvalidTokenTypeException;
 public class Token {
 	
 	public static final String VISIBLE_EXTERNAL = "there";
-	public static final String VISIBLE_INTERNAL = "there";
+	public static final String VISIBLE_INTERNAL = "here";
 	public static final String FIELD_MUTABLE = "free";
 	public static final String FIELD_CONSTANT = "set";
 	public static final String COMMENT_LINE = "//";

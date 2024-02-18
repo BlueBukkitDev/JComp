@@ -13,6 +13,7 @@ public class Lexer {
 	private boolean isInBlockComment;
 	private boolean isDebug;
 	private boolean isInString;
+	private boolean isInNumber;
 	private String processed;
 	private List<Token> tokens = new ArrayList<Token>();
 	private LexerState state;
@@ -35,8 +36,6 @@ public class Lexer {
 		boolean terminatedLine = false;
 		index = 0;
 		if(isDebug) System.out.print("["+row+"] ");
-		TokenType type;
-		String keyword = "";
 		while (index < line.length()) {
 			
 			int result = canLexComments(terminatedLine);
@@ -70,7 +69,7 @@ public class Lexer {
 				continue;
 			}
 			
-			if(canLexKeywords(keyword)) {
+			if(canLexKeywords()) {
 				continue;
 			}
 			
@@ -78,14 +77,8 @@ public class Lexer {
 				continue;
 			}
 			
-			if(state.fieldNameIsDefined()) {
-				if(isNumeric(line.charAt(index))) {//we are defining a number
-					processed += line.charAt(index);
-					index++;
-					continue;
-				}else if(canLexStrings(line.charAt(index))) {//we are defining a string
-					continue;
-				}
+			if(canLexValue()) {
+				continue;
 			}
 			
 			if(canLexBreak()) {
@@ -94,7 +87,9 @@ public class Lexer {
 
 			index++;
 		}
-		if (!terminatedLine) {System.out.println("");}//shouldn't the ! not be there?
+		if (terminatedLine) {
+			System.out.println("");
+		}//shouldn't the ! not be there?
 	}
 	//--End of Lex Function--//
 	
@@ -104,8 +99,47 @@ public class Lexer {
 	 **/
 	private void tokenizeCurrentValue() throws InvalidTokenTypeException {
 		tokens.add(new Token(processed, TokenType.DATA));
-		System.out.print(processed.trim());
+		index += processed.length();
+		System.out.print(processed);
 		processed = "";
+	}
+	
+	private boolean canLexValue() throws InvalidTokenTypeException, UnexpectedLexerStateException {
+		if(!state.fieldNameIsDefined()) {
+			return false;
+		}
+		if(!isInString && isNumeric(line.charAt(index))) {//we are defining a number
+			if(!isInNumber) {
+				isInNumber = true;
+			}
+			processed += line.charAt(index);
+			index++;
+			return true;
+		}else if(canLexStrings(line.charAt(index))) {//we are defining a string
+			buildString();
+			index++;
+			return true;
+		}else if(isInString) {
+			index++;
+			processed += line.charAt(index);
+			return true;
+		}
+		return false;
+	}
+	
+	/**
+	 *Returns true if we were not defining a string and now are. Returns false if we were defining a string and have now finished. 
+	 **/
+	private boolean buildString() throws InvalidTokenTypeException, UnexpectedLexerStateException {
+		if(!isInString) {
+			isInString = true;
+			return true;
+		}else {
+			isInString = false;
+			tokenizeCurrentValue();
+			state.enterFieldValueState();
+			return false;
+		}
 	}
 	
 	/**
@@ -147,8 +181,8 @@ public class Lexer {
 	/**
 	 *
 	 **/
-	private boolean canLexKeywords(String keyword) throws InvalidTokenTypeException, UnexpectedLexerStateException {
-		keyword = keyword.trim();
+	private boolean canLexKeywords() throws InvalidTokenTypeException, UnexpectedLexerStateException {
+		String keyword;
 		if((keyword = isKeyword()) == null) {
 			return false;
 		}
@@ -414,17 +448,17 @@ public class Lexer {
 	private boolean canLexBreak() throws InvalidTokenTypeException {
 		String compound;
 		if(hasNextOf(line, index, Token.BREAK.length()-1) && (compound = line.substring(index, index+Token.BREAK.length())).equals(Token.BREAK)) {
-//			if(state.fieldValueIsDefined()) {
-//				if(processed.length() > 0) {
-//					tokenizeCurrentValue();
-//					state.enterFieldValueState();
-//				}
-//			}
+			if(isInNumber && state.fieldNameIsDefined()) {//then we need to end number and tokenize it, returning true.
+				tokenizeCurrentValue();
+				tokens.add(new Token(compound, TokenType.BREAK));
+				//if(isDebug) System.out.print(line.charAt(index));
+				return true;
+			}
 			if(!state.fieldValueIsDefined()) {
 				throw new InvalidTokenTypeException("Misplaced line break `"+Token.BREAK+"` at line "+lineIndex+", column "+index);
 			}
 			tokens.add(new Token(compound, TokenType.BREAK));
-			if(isDebug) System.out.println(line.charAt(index));
+			if(isDebug) System.out.print(line.charAt(index));
 			index++;
 			return true;
 		}
