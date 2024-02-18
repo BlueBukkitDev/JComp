@@ -3,8 +3,8 @@ package dev.blue.jcomp;
 public enum TokenType {
 	OPEN, CLOSE, OPERATOR, KEYWORD, DEFINED, TYPE, COMMENT, BREAK, STRING, HEIR, SEQUENCER, COMPARATOR, PRIVACY, ACCESS, DEFINER, DATA, NONE;//FUNC, STRUCT, FIELD, TYPE, NUM, STRING, BINARY, 
 	
-	public static TokenType isBreak(char c) {
-		return (';' == c) ? TokenType.BREAK : TokenType.NONE;
+	public static TokenType isBreak(String s) {
+		return (Token.BREAK == s) ? TokenType.BREAK : TokenType.NONE;
 	}
 	
 	public static boolean isVisibilityToken(String s) {

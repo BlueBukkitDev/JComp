@@ -74,7 +74,7 @@ public class Lexer {
 				continue;
 			}
 			
-			if(canLexDefinitions(type)) {
+			if(canLexDefinitions()) {
 				continue;
 			}
 			
@@ -88,20 +88,8 @@ public class Lexer {
 				}
 			}
 			
-			if((type = TokenType.isBreak(current)) != TokenType.NONE) {
-				if(state.fieldNameIsDefined()) {
-					if(processed.length() > 0) {
-						tokenizeCurrentValue();
-						state.enterFieldValueState();
-					}
-				}
-				if(state.fieldValueIsDefined()) {
-					tokens.add(new Token(Character.toString(current), type));
-					if(isDebug) System.out.println(current);
-					terminatedLine = true;
-					index++;
-					continue;
-				}else throw new InvalidTokenTypeException("Misplaced line break `"+Token.BREAK+"` at line "+lineIndex+", column "+index);
+			if(canLexBreak()) {
+				continue;
 			}
 
 			index++;
@@ -124,7 +112,7 @@ public class Lexer {
 	 *Checks whether a field name is being defined or has been defined; if it has been defined (we have encountered a Definer token), 
 	 *then it resets the processed string and enters the fieldNameState.
 	 **/
-	private boolean canLexDefinitions(TokenType type) throws InvalidTokenTypeException, UnexpectedLexerStateException {
+	private boolean canLexDefinitions() throws InvalidTokenTypeException, UnexpectedLexerStateException {
 		if(!state.variabilityIsDefined()) {
 			return false;
 		}
@@ -403,7 +391,7 @@ public class Lexer {
 		return false;
 	}
 	
-	private boolean canLexSequencer() throws InvalidTokenTypeException {////////////////NOT ADJUSTED
+	private boolean canLexSequencer() throws InvalidTokenTypeException {
 		String compound;
 		if(hasNextOf(line, index, Token.SEQUENCER.length()-1) && (compound = line.substring(index, index+Token.SEQUENCER.length())).equals(Token.SEQUENCER)) {
 			tokens.add(new Token(compound, TokenType.SEQUENCER));
@@ -413,11 +401,31 @@ public class Lexer {
 		return false;
 	}
 	
-	private boolean canLexHeir() throws InvalidTokenTypeException {////////////////NOT ADJUSTED
+	private boolean canLexHeir() throws InvalidTokenTypeException {
 		String compound;
 		if(hasNextOf(line, index, Token.HEIR.length()-1) && (compound = line.substring(index, index+Token.HEIR.length())).equals(Token.HEIR)) {
 			tokens.add(new Token(compound, TokenType.HEIR));
 			index += compound.length();
+			return true;
+		}
+		return false;
+	}
+	
+	private boolean canLexBreak() throws InvalidTokenTypeException {
+		String compound;
+		if(hasNextOf(line, index, Token.BREAK.length()-1) && (compound = line.substring(index, index+Token.BREAK.length())).equals(Token.BREAK)) {
+//			if(state.fieldValueIsDefined()) {
+//				if(processed.length() > 0) {
+//					tokenizeCurrentValue();
+//					state.enterFieldValueState();
+//				}
+//			}
+			if(!state.fieldValueIsDefined()) {
+				throw new InvalidTokenTypeException("Misplaced line break `"+Token.BREAK+"` at line "+lineIndex+", column "+index);
+			}
+			tokens.add(new Token(compound, TokenType.BREAK));
+			if(isDebug) System.out.println(line.charAt(index));
+			index++;
 			return true;
 		}
 		return false;
